@@ -1,0 +1,10 @@
+#!/usr/bin/env ruby
+#
+#  Created by Alban Peignier on 2009-9-1.
+#  Copyright (c) 2009. All rights reserved.
+
+require 'rubygems'
+require File.expand_path(File.dirname(__FILE__) + "/../lib/system_builder")
+require "system_builder/cli"
+
+SystemBuilder::CLI.execute(STDOUT, ARGV)
