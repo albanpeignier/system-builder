@@ -15,7 +15,7 @@ class SystemBuilder::DebianBoot
     @include = []
 
     # kernel can't be installed by debootstrap
-    @configurators = [ kernel_configurator, fstab_configurator ]
+    @configurators = [ kernel_configurator, fstab_configurator, timezone_configurator ]
   end
 
   def create
@@ -46,6 +46,13 @@ class SystemBuilder::DebianBoot
           f.puts "tmpfs #{directory} tmpfs defaults,noatime 0 0"
         end
       end
+    end
+  end
+
+  def timezone_configurator
+    Proc.new do |chroot|
+      # Use same timezone than build machine
+      chroot.image.install "/etc/", "/etc/timezone", "/etc/localtime"
     end
   end
 
