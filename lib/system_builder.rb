@@ -3,8 +3,22 @@ $:.unshift(File.dirname(__FILE__)) unless
 
 module SystemBuilder
   VERSION = '0.0.1'
+
+  @@configurations = {}
+  
+  def self.config(name, value = nil, &block)
+    value = (value or block.call)
+    puts "* load configuration #{name}"
+    @@configurations[name.to_s] = value
+  end
+
+  def self.configuration(name)
+    @@configurations[name.to_s]
+  end
+
 end
 
 require 'system_builder/core_ext'
 require 'system_builder/image'
 require 'system_builder/boot'
+require 'system_builder/configurator'

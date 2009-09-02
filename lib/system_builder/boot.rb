@@ -4,6 +4,7 @@ class SystemBuilder::DebianBoot
   attr_accessor :exclude, :include
 
   attr_reader :root
+  attr_reader :configurators
 
   def initialize(root)
     @root = root
@@ -27,20 +28,23 @@ class SystemBuilder::DebianBoot
     unless @configurators.empty?
       chroot do |chroot|
         @configurators.each do |configurator|
-          configurator.call chroot
+          configurator.configure(chroot)
         end
       end
     end
   end
 
   def kernel_configurator
-    Proc.new do |chroot|
+    SystemBuilder::ProcConfigurator.new do |chroot|
+      chroot.image.open("/etc/kernel-img.conf") do |f|
+        f.puts "do_initrd = yes"
+      end
       chroot.apt_install %w{linux-image-2.6-686 grub}
     end
   end
 
   def fstab_configurator
-    Proc.new do |chroot|
+    SystemBuilder::ProcConfigurator.new do |chroot|
       chroot.image.open("/etc/fstab") do |f|
         %w{/tmp /var/run /var/log /var/lock /var/tmp}.each do |directory|
           f.puts "tmpfs #{directory} tmpfs defaults,noatime 0 0"
@@ -50,14 +54,14 @@ class SystemBuilder::DebianBoot
   end
 
   def timezone_configurator
-    Proc.new do |chroot|
+    SystemBuilder::ProcConfigurator.new do |chroot|
       # Use same timezone than build machine
       chroot.image.install "/etc/", "/etc/timezone", "/etc/localtime"
     end
   end
 
   def configure(&block)
-    @configurators << block
+    @configurators << SystemBuilder::ProcConfigurator.new(block)
   end
 
   def debbootstrap_options
@@ -98,6 +102,10 @@ class SystemBuilder::DebianBoot
 
     def install(target, *sources)
       FileUtils::sudo "cp --preserve=mode,timestamps #{sources.join(' ')} #{expand_path(target)}"
+    end
+
+    def rsync(target, *sources)
+      FileUtils::sudo "rsync -av #{sources.join(' ')} #{expand_path(target)}"
     end
 
     def open(filename, &block) 

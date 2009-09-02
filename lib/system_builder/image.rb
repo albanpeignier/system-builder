@@ -14,14 +14,17 @@ class SystemBuilder::DiskImage
     boot.create
     # TODO
 
-    unless File.exists?(file)
+    file_creation = (not File.exists?(file))
+    if file_creation
       create_file
       create_partition_table
       format_root_fs
     end
 
+    install_grub_files :stage_files => %w{e2fs_stage1_5 stage?}
+
     sync_root_fs
-    install_grub :stage_files => %w{e2fs_stage1_5 stage?}
+    install_grub if file_creation
 
     self
   end
@@ -56,7 +59,7 @@ class SystemBuilder::DiskImage
     end
   end
 
-  def install_grub(options = {})
+  def install_grub_files(options = {})
     stage_files = Array(options[:stage_files]).flatten
 
     boot.image do |image|
@@ -65,7 +68,9 @@ class SystemBuilder::DiskImage
       install_grub_menu options  
       image.install "boot/grub", stage_files.collect { |f| '/usr/lib/grub/**/' + f }
     end
+  end
 
+  def install_grub
     IO.popen("sudo grub --device-map=/dev/null","w") { |grub| 
       grub.puts "device (hd0) #{file}"
       grub.puts "root (hd0,0)"
