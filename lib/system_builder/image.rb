@@ -78,16 +78,12 @@ class SystemBuilder::DiskImage
     root = (options[:root] or "LABEL=#{fs_label}")
     version = (options[:version] or Time.now.strftime("%Y%m%d%H%M"))
 
-    Tempfile.open("menu_lst") do |f|
+    boot.image.open("/boot/grub/menu.lst") do |f|
       f.puts "default 0"
-      f.puts "timeout		2"
-      f.puts "title	#{version} Debian GNU/Linux"
-      f.puts "kernel		/vmlinuz root=#{root} ro"
-      f.puts "initrd		/initrd.img"
-      f.close
-
-      File.chmod 0644, f.path
-      boot.image.install "boot/grub/menu.lst", f.path
+      f.puts "timeout 2"
+      f.puts "title #{version} Debian GNU/Linux"
+      f.puts "kernel /vmlinuz root=#{root} ro"
+      f.puts "initrd /initrd.img"
     end
   end
 

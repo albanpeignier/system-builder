@@ -15,7 +15,7 @@ class SystemBuilder::DebianBoot
     @include = []
 
     # kernel can't be installed by debootstrap
-    @configurators = [ kernel_configurator ]
+    @configurators = [ kernel_configurator, fstab_configurator ]
   end
 
   def create
@@ -36,6 +36,16 @@ class SystemBuilder::DebianBoot
   def kernel_configurator
     Proc.new do |chroot|
       chroot.apt_install %w{linux-image-2.6-686 grub}
+    end
+  end
+
+  def fstab_configurator
+    Proc.new do |chroot|
+      chroot.image.open("/etc/fstab") do |f|
+        %w{/tmp /var/run /var/log /var/lock /var/tmp}.each do |directory|
+          f.puts "tmpfs #{directory} tmpfs defaults,noatime 0 0"
+        end
+      end
     end
   end
 
@@ -65,7 +75,7 @@ class SystemBuilder::DebianBoot
   end
 
   def chroot(&block)
-    @chroot ||= Chroot.new(root)
+    @chroot ||= Chroot.new(image)
     @chroot.execute &block
   end
 
@@ -83,6 +93,16 @@ class SystemBuilder::DebianBoot
       FileUtils::sudo "cp --preserve=mode,timestamps #{sources.join(' ')} #{expand_path(target)}"
     end
 
+    def open(filename, &block) 
+      Tempfile.open(File.basename(filename)) do |f|
+        yield f
+        f.close
+        
+        File.chmod 0644, f.path
+        install filename, f.path
+      end
+    end
+
     def expand_path(path)
       File.join(@root,path)
     end
@@ -91,8 +111,10 @@ class SystemBuilder::DebianBoot
 
   class Chroot
 
-    def initialize(root)
-      @root = root
+    attr_reader :image
+
+    def initialize(image)
+      @image = image
     end
 
     def apt_install(*packages)
@@ -100,7 +122,7 @@ class SystemBuilder::DebianBoot
     end
 
     def sh(*arguments)
-      FileUtils::sudo "chroot #{@root} sh -c \"LC_ALL=C #{arguments.join(' ')}\""
+      FileUtils::sudo "chroot #{image.expand_path('/')} sh -c \"LC_ALL=C #{arguments.join(' ')}\""
     end
     alias_method :sudo, :sh
 
@@ -114,11 +136,11 @@ class SystemBuilder::DebianBoot
     end
 
     def prepare_run
-      FileUtils::sudo "mount proc #{@root}/proc -t proc"
+      FileUtils::sudo "mount proc #{image.expand_path('/proc')} -t proc"
     end
 
     def unprepare_run
-      FileUtils::sudo "umount #{@root}/proc"
+      FileUtils::sudo "umount #{image.expand_path('/proc')}"
     end
 
   end
