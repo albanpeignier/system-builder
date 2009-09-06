@@ -22,13 +22,17 @@ module SystemBuilder
 
     def configure(chroot)
       chroot.apt_install :puppet
+      chroot.image.open("/etc/default/puppet") do |f|
+        f.puts "START=no"
+      end
 
       unless File.directory?(manifest)
         chroot.image.install "/tmp/puppet.pp", manifest
         chroot.sudo "puppet tmp/puppet.pp"
       else
         chroot.image.mkdir "/tmp/puppet"
-        chroot.image.rsync "/tmp/puppet", "#{manifest}/manifests"
+
+        chroot.image.rsync "/tmp/puppet", "#{manifest}/manifests", "#{manifest}/files", :exclude => "*~"
         chroot.sudo "puppet tmp/puppet/manifests/site.pp"
       end
     end
