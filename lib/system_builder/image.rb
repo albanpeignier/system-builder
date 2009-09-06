@@ -57,6 +57,8 @@ class SystemBuilder::DiskImage
     ensure
       FileUtils::sudo "umount #{mount_dir}"
     end
+
+    FileUtils.touch file
   end
 
   def install_grub_files(options = {})
