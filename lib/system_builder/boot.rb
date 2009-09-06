@@ -16,7 +16,12 @@ class SystemBuilder::DebianBoot
     @include = []
 
     # kernel can't be installed by debootstrap
-    @configurators = [ kernel_configurator, fstab_configurator, timezone_configurator ]
+    @configurators = 
+      [ localhost_configurator, 
+        apt_configurator, 
+        kernel_configurator, 
+        fstab_configurator, 
+        timezone_configurator ]
   end
 
   def create
@@ -57,6 +62,23 @@ class SystemBuilder::DebianBoot
     SystemBuilder::ProcConfigurator.new do |chroot|
       # Use same timezone than build machine
       chroot.image.install "/etc/", "/etc/timezone", "/etc/localtime"
+    end
+  end
+
+  def apt_configurator
+    # TODO see if this step is really needed
+    SystemBuilder::ProcConfigurator.new do |chroot|    
+      chroot.image.install "/etc/apt", "/etc/apt/trusted.gpg"
+      chroot.sudo "apt-get update"
+    end
+  end
+
+  def localhost_configurator
+    SystemBuilder::ProcConfigurator.new do |chroot|
+      chroot.image.open("/etc/hosts") do |f|
+        f.puts "127.0.0.1	localhost"
+        f.puts "::1     localhost ip6-localhost ip6-loopback"
+      end
     end
   end
 
@@ -105,7 +127,9 @@ class SystemBuilder::DebianBoot
     end
 
     def rsync(target, *sources)
-      FileUtils::sudo "rsync -av #{sources.join(' ')} #{expand_path(target)}"
+      options = (Hash === sources.last ? sources.pop : {})
+      rsync_options = options.collect { |k,v| "--#{k}=#{v}" }
+      FileUtils::sudo "rsync -av #{rsync_options.join(' ')} #{sources.join(' ')} #{expand_path(target)}"
     end
 
     def open(filename, &block) 
@@ -134,6 +158,10 @@ class SystemBuilder::DebianBoot
 
     def apt_install(*packages)
       sudo "apt-get install --yes --force-yes #{packages.join(' ')}"
+    end
+
+    def cp(*arguments)
+      sudo "cp #{arguments.join(' ')}"
     end
 
     def sh(*arguments)
