@@ -4,6 +4,7 @@ PostInstall.txt
 README.rdoc
 Rakefile
 bin/system-builder
+examples/Rakefile
 examples/config.rb
 examples/manifests/classes/test.pp
 examples/manifests/site.pp
@@ -18,6 +19,7 @@ lib/system_builder/cli.rb
 lib/system_builder/configurator.rb
 lib/system_builder/core_ext.rb
 lib/system_builder/image.rb
+lib/system_builder/task.rb
 script/console
 script/destroy
 script/generate
