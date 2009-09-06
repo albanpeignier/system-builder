@@ -6,11 +6,16 @@ class SystemBuilder::DebianBoot
   attr_reader :root
   attr_reader :configurators
 
+  @@default_mirror = 'http://ftp.debian.org/debian'
+  def self.default_mirror=(mirror)
+    @@default_mirror = mirror    
+  end
+
   def initialize(root)
     @root = root
 
     @version = :lenny
-    @mirror = 'http://ftp.debian.org/debian'
+    @mirror = @@default_mirror
     @architecture = :i386
     @exclude = []
     @include = []

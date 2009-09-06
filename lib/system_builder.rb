@@ -15,6 +15,7 @@ module SystemBuilder
   def self.configuration(name)
     @@configurations[name.to_s]
   end
+
 end
 
 require 'system_builder/core_ext'
