@@ -41,13 +41,15 @@ end
 
 module FileUtils
 
-  def self.sh(*cmd)
+  def sh(*cmd)
     puts "* #{cmd.join(' ')}"
     raise "Command failed: #{$?}" unless system(cmd.join(' '))
   end
+  module_function :sh
 
-  def self.sudo(*cmd)
+  def sudo(*cmd)
     sh ["sudo", *cmd]
   end
+  module_function :sudo
 
 end
