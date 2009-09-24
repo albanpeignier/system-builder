@@ -2,7 +2,9 @@ require 'system_builder'
 require 'system_builder/task'
 
 def working_dir(name, type)
-  "/var/tmp/system-builder/#{name}/#{type}"
+  directory = "/var/tmp/system-builder/#{name}/#{type}"
+  mkdir_p directory
+  directory
 end
 
 SystemBuilder::Task.new(:simple_test) do

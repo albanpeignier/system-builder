@@ -1,5 +1,7 @@
 def working_dir(name, type)
-  "/var/tmp/system-builder/#{name}/#{type}"
+  directory = "/var/tmp/system-builder/#{name}/#{type}"
+  mkdir_p directory
+  directory
 end
 
 SystemBuilder.config(:simple_test) do
