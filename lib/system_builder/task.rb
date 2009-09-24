@@ -30,6 +30,19 @@ class SystemBuilder::Task < Rake::TaskLib
         end
       end
       task "dist:vmware" => "dist"
+
+      task :setup do
+        required_packages = []
+        required_packages << "qemu" # to convert image files
+        required_packages << "util-linux" # provides sfdisk
+        required_packages << "sudo"
+        required_packages << "debootstrap"
+        required_packages << "rsync"
+        # installing grub isn't a good idea
+        # required_packages << "grub"
+
+        FileUtils.sudo "apt-get install #{required_packages.join(' ')}"
+      end
     end
   end
 
