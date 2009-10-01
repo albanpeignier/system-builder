@@ -27,18 +27,37 @@ class SystemBuilder::DebianBoot
         kernel_configurator, 
         fstab_configurator, 
         timezone_configurator ]
+    @cleaners = [ apt_cleaner ]
   end
 
   def create
+    bootstrap
+    configure
+    clean
+  end
+
+  def bootstrap
     unless File.exists?(root)
       FileUtils::mkdir_p root
       FileUtils::sudo "debootstrap", debbootstrap_options, version, root, mirror
     end
+  end
 
+  def configure
     unless @configurators.empty?
       chroot do |chroot|
         @configurators.each do |configurator|
           configurator.configure(chroot)
+        end
+      end
+    end
+  end
+
+  def clean
+    unless @cleaners.empty?
+      chroot do |chroot|
+        @cleaners.each do |cleaner|
+          cleaner.call(chroot)
         end
       end
     end
@@ -75,6 +94,12 @@ class SystemBuilder::DebianBoot
     SystemBuilder::ProcConfigurator.new do |chroot|    
       chroot.image.install "/etc/apt", "/etc/apt/trusted.gpg"
       chroot.sudo "apt-get update"
+    end
+  end
+
+  def apt_cleaner
+    Proc.new do |chroot|
+      chroot.sudo "apt-get clean"      
     end
   end
 

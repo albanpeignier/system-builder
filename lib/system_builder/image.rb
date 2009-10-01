@@ -53,7 +53,7 @@ class SystemBuilder::DiskImage
     
     begin
       FileUtils::sudo "mount -o loop,offset=#{fs_offset} #{file} #{mount_dir}"
-      FileUtils::sudo "rsync -av #{boot.root}/ #{mount_dir}"
+      FileUtils::sudo "rsync -av --delete #{boot.root}/ #{mount_dir}"
     ensure
       FileUtils::sudo "umount #{mount_dir}"
     end
