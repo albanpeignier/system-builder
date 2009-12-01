@@ -42,6 +42,7 @@ end
 module FileUtils
 
   def sh(*cmd)
+    options = Hash === cmd.last ? cmd.pop : {}
     puts "* #{cmd.join(' ')}"
     raise "Command failed: #{$?}" unless system(cmd.join(' '))
   end
