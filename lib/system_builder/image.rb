@@ -21,10 +21,10 @@ class SystemBuilder::DiskImage
       format_root_fs
     end
 
-    install_grub_files :stage_files => %w{e2fs_stage1_5 stage?}
+    install_extlinux_files
 
     sync_root_fs
-    install_grub if file_creation
+    install_extlinux
 
     self
   end
@@ -34,7 +34,8 @@ class SystemBuilder::DiskImage
   end
 
   def create_partition_table
-    FileUtils::sh "echo '63,' | /sbin/sfdisk --no-reread -uS -H16 -S63 #{file}"
+    # Partition must be bootable for syslinux
+    FileUtils::sh "echo '63,,L,*' | /sbin/sfdisk --no-reread -uS -H16 -S63 #{file}"
   end
 
   def format_root_fs
@@ -47,18 +48,41 @@ class SystemBuilder::DiskImage
     end
   end
 
-  def sync_root_fs
+  def mount_root_fs(&block)
+    # TODO use a smarter mount_dir
     mount_dir = "/tmp/mount_root_fs"
     FileUtils::mkdir_p mount_dir
-    
+
     begin
       FileUtils::sudo "mount -o loop,offset=#{fs_offset} #{file} #{mount_dir}"
-      FileUtils::sudo "rsync -av --delete #{boot.root}/ #{mount_dir}"
+      yield mount_dir
     ensure
       FileUtils::sudo "umount #{mount_dir}"
     end
+  end
 
+  def sync_root_fs
+    mount_root_fs do |mount_dir|
+      FileUtils::sudo "rsync -a --delete #{boot.root}/ #{mount_dir}"
+    end
     FileUtils.touch file
+  end
+
+  def install_extlinux_files(options = {})
+    root = (options[:root] or "LABEL=#{fs_label}")
+    version = (options[:version] or Time.now.strftime("%Y%m%d%H%M"))
+
+    boot.image do |image|
+      image.mkdir "/boot/extlinux"
+
+      boot.image.open("/boot/extlinux/extlinux.conf") do |f|
+        f.puts "DEFAULT linux"
+        f.puts "LABEL linux"
+        f.puts "SAY Now booting #{version} from syslinux ..."
+        f.puts "KERNEL /vmlinuz"
+        f.puts "APPEND ro root=#{root} initrd=/initrd.img"
+      end
+    end
   end
 
   def install_grub_files(options = {})
@@ -67,9 +91,19 @@ class SystemBuilder::DiskImage
     boot.image do |image|
       image.mkdir "/boot/grub"
 
-      install_grub_menu options  
+      install_grub_menu options
       image.install "boot/grub", stage_files.collect { |f| '/usr/lib/grub/**/' + f }
     end
+  end
+
+  def install_extlinux
+    # TODO install extlinux.sys only when needed
+    mount_root_fs do |mount_dir|
+      FileUtils::sudo "extlinux --install -H16 -S63 #{mount_dir}/boot/extlinux"
+    end
+    # TODO install mbr only when needed
+    # install MBR
+    FileUtils::sh "dd if=/usr/lib/syslinux/mbr.bin of=#{file} conv=notrunc"
   end
 
   def install_grub
@@ -104,7 +138,7 @@ class SystemBuilder::DiskImage
 
   def fs_block_size
     linux_partition_info = `/sbin/sfdisk -l #{file}`.scan(%r{#{file}.*Linux}).first
-    linux_partition_info.split[4].to_i
+    linux_partition_info.split[5].to_i
   end
 
   def fs_offset
