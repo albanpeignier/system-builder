@@ -38,9 +38,9 @@ class SystemBuilder::Task < Rake::TaskLib
         required_packages << "sudo"
         required_packages << "debootstrap"
         required_packages << "rsync"
-        # installing grub isn't a good idea
-        # required_packages << "grub"
-
+        required_packages << "extlinux"
+        required_packages << "syslinux-common"
+        
         FileUtils.sudo "apt-get install #{required_packages.join(' ')}"
       end
     end
