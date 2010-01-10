@@ -26,8 +26,10 @@ class SystemBuilder::DebianBoot
         apt_configurator, 
         kernel_configurator, 
         fstab_configurator, 
-        timezone_configurator ]
-    @cleaners = [ apt_cleaner ]
+        timezone_configurator,
+        policyrc_configurator
+      ]
+    @cleaners = [ apt_cleaner, policyrc_cleaner ]
   end
 
   def create
@@ -44,6 +46,7 @@ class SystemBuilder::DebianBoot
   end
 
   def configure
+    puts "* #{configurators.size} configurators to run :"
     unless @configurators.empty?
       chroot do |chroot|
         @configurators.each do |configurator|
@@ -65,15 +68,17 @@ class SystemBuilder::DebianBoot
 
   def kernel_configurator
     SystemBuilder::ProcConfigurator.new do |chroot|
+      puts "* install kernel"
       chroot.image.open("/etc/kernel-img.conf") do |f|
         f.puts "do_initrd = yes"
       end
-      chroot.apt_install %w{linux-image-2.6-686 grub}
+      chroot.apt_install %w{linux-image-2.6-686}
     end
   end
 
   def fstab_configurator
     SystemBuilder::ProcConfigurator.new do |chroot|
+      puts "* create fstab"
       chroot.image.open("/etc/fstab") do |f|
         %w{/tmp /var/run /var/log /var/lock /var/tmp}.each do |directory|
           f.puts "tmpfs #{directory} tmpfs defaults,noatime 0 0"
@@ -84,6 +89,7 @@ class SystemBuilder::DebianBoot
 
   def timezone_configurator
     SystemBuilder::ProcConfigurator.new do |chroot|
+      puts "* define timezone"
       # Use same timezone than build machine
       chroot.image.install "/etc/", "/etc/timezone", "/etc/localtime"
     end
@@ -92,14 +98,35 @@ class SystemBuilder::DebianBoot
   def apt_configurator
     # TODO see if this step is really needed
     SystemBuilder::ProcConfigurator.new do |chroot|    
+      puts "* install apt keys"
       chroot.image.install "/etc/apt", "/etc/apt/trusted.gpg"
       chroot.sudo "apt-get update"
     end
   end
 
+  def policyrc_configurator
+    SystemBuilder::ProcConfigurator.new do |chroot|    
+      puts "* disable rc services"
+      chroot.image.open("/usr/sbin/policy-rc.d") do |f|
+        f.puts "exit 101"
+      end
+      chroot.sh "chmod +x /usr/sbin/policy-rc.d"
+    end
+  end
+
   def apt_cleaner
     Proc.new do |chroot|
+      puts "* clean apt caches"
       chroot.sudo "apt-get clean"      
+      puts "* autoremove packages"
+      chroot.sudo "apt-get autoremove --yes"      
+    end
+  end
+
+  def policyrc_cleaner
+    Proc.new do |chroot|
+      puts "* enable rc services"
+      chroot.sh "rm /usr/sbin/policy-rc.d"
     end
   end
 
@@ -110,10 +137,6 @@ class SystemBuilder::DebianBoot
         f.puts "::1     localhost ip6-localhost ip6-loopback"
       end
     end
-  end
-
-  def configure(&block)
-    @configurators << SystemBuilder::ProcConfigurator.new(block)
   end
 
   def debbootstrap_options

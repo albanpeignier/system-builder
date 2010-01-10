@@ -21,6 +21,8 @@ module SystemBuilder
     end
 
     def configure(chroot)
+      puts "* run puppet configuration"
+
       chroot.apt_install :puppet
       chroot.image.open("/etc/default/puppet") do |f|
         f.puts "START=no"
