@@ -1,3 +1,8 @@
+=== 0.0.4 2009-10-10
+
+* Replace grub by syslinux
+* Disable invoke-rc.d during configuration
+
 === 0.0.2 2009-09-02
 
 * 1 major enhancement:
